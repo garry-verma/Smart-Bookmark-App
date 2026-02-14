@@ -53,36 +53,31 @@ export default function BookmarkList({ userId }: BookmarkListProps) {
   };
 
   const setupRealtimeSubscription = () => {
-  const channel = supabase
-    .channel("bookmarks_realtime")
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "bookmarks",
-        // filter: `user_id=eq.${userId}`, // ❌ remove this
-      },
-      (payload) => {
-        const row = payload.new || payload.old;
-        if (!row) return;
-
-        if (payload.eventType === "INSERT") {
-          setBookmarks((prev) => [row as Bookmark, ...prev]);
-        } else if (payload.eventType === "DELETE") {
-          setBookmarks((prev) => prev.filter((b) => b.id !== row.id));
-        } else if (payload.eventType === "UPDATE") {
-          setBookmarks((prev) =>
-            prev.map((b) => (b.id === row.id ? (row as Bookmark) : b))
-          );
+    const channel = supabase
+      .channel('bookmarks_realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookmarks',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          console.log(payload);
+          if (payload.eventType === 'INSERT') {
+            setBookmarks((prev) => [payload.new as Bookmark, ...prev]);
+          } else if (payload.eventType === 'DELETE') {
+            setBookmarks((prev) => prev.filter((b) => b.id !== payload.old.id));
+          }
         }
-      }
-    )
-    .subscribe((status) => console.log("Realtime status:", status));
+      )
+      .subscribe((status) => console.log("Realtime status:", status));
 
-  return () => supabase.removeChannel(channel);
-};
-
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
