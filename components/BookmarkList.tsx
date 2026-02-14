@@ -64,17 +64,21 @@ export default function BookmarkList({ userId }: BookmarkListProps) {
       table: 'bookmarks'
     },
     (payload) => {
+      console.log("payload", payload);
       if (!payload.new || !payload.old) return;
 
       // Only apply events for this user
       if ((payload.new as Bookmark).user_id?.toString() === userId?.toString()) {
+        console.log("Insertpayload", payload);
         if (payload.eventType === 'INSERT') {
           setBookmarks((prev) => [payload.new as Bookmark, ...prev]);
         } else if (payload.eventType === 'DELETE') {
+          console.log("Deletepayload", payload);
           setBookmarks((prev) =>
             prev.filter((b) => b.id !== payload.old.id)
           );
         } else if (payload.eventType === 'UPDATE') {
+          console.log("Updatepayload", payload);
           setBookmarks((prev) =>
             prev.map((b) =>
               b.id === (payload.new as Bookmark).id
