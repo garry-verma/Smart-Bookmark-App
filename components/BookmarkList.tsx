@@ -53,6 +53,7 @@ export default function BookmarkList({ userId }: BookmarkListProps) {
   };
 
   const setupRealtimeSubscription = () => {
+    console.log("userId", userId);
     const channel = supabase
       .channel('bookmarks_realtime')
       .on(
@@ -64,7 +65,7 @@ export default function BookmarkList({ userId }: BookmarkListProps) {
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
-          console.log(payload);
+          console.log("payload", payload);
           if (payload.eventType === 'INSERT') {
             setBookmarks((prev) => [payload.new as Bookmark, ...prev]);
           } else if (payload.eventType === 'DELETE') {
