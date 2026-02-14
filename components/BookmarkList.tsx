@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -19,19 +19,44 @@ export default function BookmarkList({ userId }: BookmarkListProps) {
   const supabase = createClient();
 
   useEffect(() => {
+    if (!userId) return;
+
+    // Initial fetch
     fetchBookmarks();
-    const cleanup = setupRealtimeSubscription();
-    
-    // Listen for custom bookmark added events
-    const handleBookmarkAdded = () => {
-      fetchBookmarks();
-    };
-    
-    window.addEventListener('bookmarkAdded', handleBookmarkAdded);
-    
+
+    // Setup Realtime subscription
+    const channel = supabase
+      .channel(`bookmarks-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookmarks',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          console.log('Realtime payload:', payload);
+
+          if (payload.eventType === 'INSERT') {
+            setBookmarks((prev) => [payload.new as Bookmark, ...prev]);
+          } else if (payload.eventType === 'DELETE') {
+            setBookmarks((prev) =>
+              prev.filter((b) => b.id !== payload.old.id)
+            );
+          } else if (payload.eventType === 'UPDATE') {
+            setBookmarks((prev) =>
+              prev.map((b) =>
+                b.id === payload.new.id ? (payload.new as Bookmark) : b
+              )
+            );
+          }
+        }
+      )
+      .subscribe((status) => console.log('Realtime status:', status));
+
     return () => {
-      cleanup();
-      window.removeEventListener('bookmarkAdded', handleBookmarkAdded);
+      supabase.removeChannel(channel);
     };
   }, [userId]);
 
@@ -50,32 +75,6 @@ export default function BookmarkList({ userId }: BookmarkListProps) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const setupRealtimeSubscription = () => {
-    const channel = supabase
-      .channel('bookmarks_realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'bookmarks',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setBookmarks((prev) => [payload.new as Bookmark, ...prev]);
-          } else if (payload.eventType === 'DELETE') {
-            setBookmarks((prev) => prev.filter((b) => b.id !== payload.old.id));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   };
 
   const handleDelete = async (id: string) => {
@@ -117,8 +116,12 @@ export default function BookmarkList({ userId }: BookmarkListProps) {
       <Card>
         <CardContent className="p-12 text-center">
           <BookmarkIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No bookmarks yet</h3>
-          <p className="text-gray-500">Start by adding your first bookmark above.</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            No bookmarks yet
+          </h3>
+          <p className="text-gray-500">
+            Start by adding your first bookmark above.
+          </p>
         </CardContent>
       </Card>
     );
