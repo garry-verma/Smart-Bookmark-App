@@ -53,7 +53,7 @@ export default function BookmarkList({ userId }: BookmarkListProps) {
   };
 
   const setupRealtimeSubscription = () => {
-    console.log("userId", userId);
+    
     const channel = supabase
   .channel('bookmarks_realtime')
   .on(
@@ -93,7 +93,7 @@ export default function BookmarkList({ userId }: BookmarkListProps) {
       }
     
   )
-  .subscribe((status) => console.log("Realtime status:", status));
+  .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
