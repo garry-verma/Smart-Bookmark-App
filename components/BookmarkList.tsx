@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ExternalLink, Trash2, Bookmark as BookmarkIcon } from "lucide-react";
-import { toast } from "sonner";
-import type { Bookmark } from "@/lib/types/bookmark";
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ExternalLink, Trash2, Bookmark as BookmarkIcon } from 'lucide-react';
+import { toast } from 'sonner';
+import type { Bookmark } from '@/lib/types/bookmark';
 
 interface BookmarkListProps {
   userId: string;
@@ -19,26 +19,34 @@ export default function BookmarkList({ userId }: BookmarkListProps) {
   const supabase = createClient();
 
   useEffect(() => {
-    if (!userId) return;
-
     fetchBookmarks();
     const cleanup = setupRealtimeSubscription();
-
-    return () => cleanup?.();
+    
+    // Listen for custom bookmark added events
+    const handleBookmarkAdded = () => {
+      fetchBookmarks();
+    };
+    
+    window.addEventListener('bookmarkAdded', handleBookmarkAdded);
+    
+    return () => {
+      cleanup();
+      window.removeEventListener('bookmarkAdded', handleBookmarkAdded);
+    };
   }, [userId]);
 
   const fetchBookmarks = async () => {
     try {
       const { data, error } = await supabase
-        .from("bookmarks")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
+        .from('bookmarks')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       setBookmarks(data || []);
     } catch (error: any) {
-      toast.error("Failed to fetch bookmarks: " + error.message);
+      toast.error('Failed to fetch bookmarks: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -46,50 +54,43 @@ export default function BookmarkList({ userId }: BookmarkListProps) {
 
   const setupRealtimeSubscription = () => {
     const channel = supabase
-      .channel("bookmarks_realtime")
+      .channel('bookmarks_realtime')
       .on(
-        "postgres_changes",
+        'postgres_changes',
         {
-          event: "*",
-          schema: "public",
-          table: "bookmarks",
+          event: '*',
+          schema: 'public',
+          table: 'bookmarks',
+          filter: `user_id=eq.${userId}`,
         },
         (payload) => {
-          const row = payload.new || payload.old;
-          if (!row) return;
-
-          // Filter client-side to only show current user's bookmarks
-          if (row.user_id !== userId) return;
-
-          if (payload.eventType === "INSERT") {
-            setBookmarks((prev) => [row as Bookmark, ...prev]);
-          } else if (payload.eventType === "DELETE") {
-            setBookmarks((prev) => prev.filter((b) => b.id !== row.id));
-          } else if (payload.eventType === "UPDATE") {
-            setBookmarks((prev) =>
-              prev.map((b) => (b.id === row.id ? (row as Bookmark) : b))
-            );
+          console.log(payload);
+          if (payload.eventType === 'INSERT') {
+            setBookmarks((prev) => [payload.new as Bookmark, ...prev]);
+          } else if (payload.eventType === 'DELETE') {
+            setBookmarks((prev) => prev.filter((b) => b.id !== payload.old.id));
           }
         }
       )
       .subscribe((status) => console.log("Realtime status:", status));
 
-    return () => supabase.removeChannel(channel);
+    return () => {
+      supabase.removeChannel(channel);
+    };
   };
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
-
-    // Optimistically remove from UI
-    setBookmarks((prev) => prev.filter((b) => b.id !== id));
-
     try {
-      const { error } = await supabase.from("bookmarks").delete().eq("id", id);
+      const { error } = await supabase
+        .from('bookmarks')
+        .delete()
+        .eq('id', id);
+
       if (error) throw error;
-      toast.success("Bookmark deleted!");
+      toast.success('Bookmark deleted!');
     } catch (error: any) {
-      toast.error("Failed to delete bookmark: " + error.message);
-      fetchBookmarks(); // rollback if delete failed
+      toast.error('Failed to delete bookmark: ' + error.message);
     } finally {
       setDeletingId(null);
     }
@@ -134,7 +135,9 @@ export default function BookmarkList({ userId }: BookmarkListProps) {
           <CardContent className="p-6">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-gray-900 truncate">{bookmark.title}</h3>
+                <h3 className="font-medium text-gray-900 truncate">
+                  {bookmark.title}
+                </h3>
                 <a
                   href={bookmark.url}
                   target="_blank"
