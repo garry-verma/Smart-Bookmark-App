@@ -72,12 +72,15 @@ export default function BookmarkList({ userId }: BookmarkListProps) {
         console.log("Insertpayload", payload);
         if (payload.eventType === 'INSERT') {
           setBookmarks((prev) => [payload.new as Bookmark, ...prev]);
-        } else if (payload.eventType === 'DELETE') {
+        }
+       } 
+       if (payload.eventType === 'DELETE') {
           console.log("Deletepayload", payload);
           setBookmarks((prev) =>
             prev.filter((b) => b.id !== payload.old.id)
           );
-        } else if (payload.eventType === 'UPDATE') {
+        }
+        if (payload.eventType === 'UPDATE') {
           console.log("Updatepayload", payload);
           setBookmarks((prev) =>
             prev.map((b) =>
@@ -88,7 +91,7 @@ export default function BookmarkList({ userId }: BookmarkListProps) {
           );
         }
       }
-    }
+    
   )
   .subscribe((status) => console.log("Realtime status:", status));
 
