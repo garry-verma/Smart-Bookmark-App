@@ -67,9 +67,6 @@ export default function BookmarkList({ userId }: BookmarkListProps) {
         const row = payload.new || payload.old;
         if (!row) return;
 
-        // client-side filtering by user
-        if (row.user_id !== userId) return;
-
         if (payload.eventType === "INSERT") {
           setBookmarks((prev) => [row as Bookmark, ...prev]);
         } else if (payload.eventType === "DELETE") {
