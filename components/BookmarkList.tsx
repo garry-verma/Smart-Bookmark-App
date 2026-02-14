@@ -64,10 +64,10 @@ export default function BookmarkList({ userId }: BookmarkListProps) {
       table: 'bookmarks'
     },
     (payload) => {
-      if (!payload.new) return;
+      if (!payload.new || !payload.old) return;
 
       // Only apply events for this user
-      if ((payload.new as Bookmark).user_id === userId) {
+      if ((payload.new as Bookmark).user_id?.toString() === userId?.toString()) {
         if (payload.eventType === 'INSERT') {
           setBookmarks((prev) => [payload.new as Bookmark, ...prev]);
         } else if (payload.eventType === 'DELETE') {
