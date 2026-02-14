@@ -55,25 +55,38 @@ export default function BookmarkList({ userId }: BookmarkListProps) {
   const setupRealtimeSubscription = () => {
     console.log("userId", userId);
     const channel = supabase
-      .channel('bookmarks_realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'bookmarks',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          console.log("payload", payload);
-          if (payload.eventType === 'INSERT') {
-            setBookmarks((prev) => [payload.new as Bookmark, ...prev]);
-          } else if (payload.eventType === 'DELETE') {
-            setBookmarks((prev) => prev.filter((b) => b.id !== payload.old.id));
-          }
+  .channel('bookmarks_realtime')
+  .on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'bookmarks'
+    },
+    (payload) => {
+      if (!payload.new) return;
+
+      // Only apply events for this user
+      if ((payload.new as Bookmark).user_id === userId) {
+        if (payload.eventType === 'INSERT') {
+          setBookmarks((prev) => [payload.new as Bookmark, ...prev]);
+        } else if (payload.eventType === 'DELETE') {
+          setBookmarks((prev) =>
+            prev.filter((b) => b.id !== payload.old.id)
+          );
+        } else if (payload.eventType === 'UPDATE') {
+          setBookmarks((prev) =>
+            prev.map((b) =>
+              b.id === (payload.new as Bookmark).id
+                ? (payload.new as Bookmark)
+                : b
+            )
+          );
         }
-      )
-      .subscribe((status) => console.log("Realtime status:", status));
+      }
+    }
+  )
+  .subscribe((status) => console.log("Realtime status:", status));
 
     return () => {
       supabase.removeChannel(channel);
