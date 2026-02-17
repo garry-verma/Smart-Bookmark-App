@@ -50,7 +50,7 @@ export default function BookmarkList({ userId }: BookmarkListProps) {
           filter: `user_id=eq.${userId}`, // Server-side filtering
         },
         (payload) => {
-          console.log('Realtime change received:', payload);
+          console.log('Realtime change received :', payload);
 
           // HANDLE INSERT
           if (payload.eventType === 'INSERT') {
